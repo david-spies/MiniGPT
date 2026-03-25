@@ -66,4 +66,4 @@ minigpt/
 
 ## 📜 License
 
-MIT
+MIT - Use it, fork it, build with it.
