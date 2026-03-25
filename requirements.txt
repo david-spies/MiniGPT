@@ -1,0 +1,43 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# MiniGPT Requirements
+# Python 3.10+ recommended
+# Install: pip install -r requirements.txt
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Core ML Framework ─────────────────────────────────────────────────────────
+torch>=2.2.0                    # PyTorch (CPU-only: pip install torch --index-url https://download.pytorch.org/whl/cpu)
+torchvision>=0.17.0             # Required by some torch utilities
+
+# ── Training Data ─────────────────────────────────────────────────────────────
+datasets>=2.18.0                # HuggingFace Datasets (TinyStories)
+huggingface-hub>=0.21.0         # HuggingFace model/dataset hub client
+
+# ── Tokenizer ─────────────────────────────────────────────────────────────────
+tokenizers>=0.15.2              # Fast BPE tokenizer training
+transformers>=4.39.0            # PreTrainedTokenizerFast wrapper
+
+# ── ONNX Export ───────────────────────────────────────────────────────────────
+onnx>=1.16.0                    # ONNX graph format
+onnxruntime>=1.17.0             # ONNX Runtime (CPU inference + quantization)
+onnxruntime-tools>=1.7.0        # Additional quantization utilities
+
+# ── Mobile Export (optional) ──────────────────────────────────────────────────
+# Uncomment for iOS CoreML export:
+# coremltools>=7.2
+
+# Uncomment for Android TFLite export:
+# onnx-tf>=1.10.0
+# tensorflow>=2.15.0
+
+# ── Development & Testing ─────────────────────────────────────────────────────
+numpy>=1.26.0                   # Numerical arrays
+tqdm>=4.66.0                    # Progress bars
+rich>=13.7.0                    # Rich terminal output
+
+# ── Optional: Accelerated Training ───────────────────────────────────────────
+# Uncomment if training on NVIDIA GPU:
+# torch-cuda                    # Install via: pip install torch --index-url https://download.pytorch.org/whl/cu121
+
+# ── Testing ────────────────────────────────────────────────────────────────────
+pytest>=8.1.0
+pytest-asyncio>=0.23.0
