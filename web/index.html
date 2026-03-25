@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiniGPT · 16MB Language Model</title>
+  <meta name="description" content="A 1.4M parameter language model running entirely in your browser. No server. No data sent. ~1.5MB." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design System ─────────────────────────────────────────────────── */
+    :root {
+      --bg-0:       #0a0b0e;
+      --bg-1:       #10121a;
+      --bg-2:       #161924;
+      --bg-3:       #1e2232;
+      --border:     #252a3d;
+      --border-hi:  #353b55;
+      --text-0:     #e8eaf2;
+      --text-1:     #9ba3c2;
+      --text-2:     #5a6180;
+      --accent:     #5b6ef5;
+      --accent-dim: #2a3180;
+      --accent-glow:#5b6ef540;
+      --green:      #34d399;
+      --green-dim:  #0d3326;
+      --amber:      #fbbf24;
+      --red:        #f87171;
+      --font-mono:  'JetBrains Mono', monospace;
+      --font-sans:  'Syne', sans-serif;
+      --radius:     8px;
+      --radius-lg:  14px;
+      --shadow:     0 4px 24px rgba(0,0,0,0.5);
+    }
+
+    /* ── Reset ────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg-0);
+      color: var(--text-0);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background grid ──────────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(91,110,245,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(91,110,245,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────────────── */
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 20px 80px;
+    }
+
+    /* ── Header ───────────────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 48px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .logo-text {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-text span {
+      color: var(--accent);
+    }
+
+    .header-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      color: var(--text-1);
+      background: var(--bg-2);
+      white-space: nowrap;
+    }
+
+    .badge.green {
+      border-color: var(--green);
+      color: var(--green);
+      background: var(--green-dim);
+    }
+
+    /* ── Hero ─────────────────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+
+    .hero h1 .accent { color: var(--accent); }
+    .hero h1 .dim    { color: var(--text-2); }
+
+    .hero p {
+      color: var(--text-1);
+      font-size: 1rem;
+      max-width: 500px;
+      margin: 0 auto 24px;
+      line-height: 1.7;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+
+    .stat {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 20px;
+      text-align: center;
+      min-width: 100px;
+    }
+
+    .stat-val {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-lbl {
+      font-size: 0.7rem;
+      color: var(--text-2);
+      margin-top: 2px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* ── Load Bar ─────────────────────────────────────────────────────── */
+    #load-section {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      margin-bottom: 28px;
+    }
+
+    .load-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .load-title {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-1);
+      letter-spacing: 0.05em;
+    }
+
+    .load-status {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent);
+    }
+
+    .progress-track {
+      height: 4px;
+      background: var(--bg-3);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #8b5cf6);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .load-btn {
+      margin-top: 20px;
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+    }
+
+    .load-btn:hover:not(:disabled) {
+      background: #7080ff;
+      box-shadow: 0 0 24px var(--accent-glow);
+    }
+
+    .load-btn:active:not(:disabled) { transform: scale(0.99); }
+    .load-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Interface ────────────────────────────────────────────────────── */
+    #app-section { display: none; }
+
+    .panel {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-2);
+    }
+
+    .panel-title {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-1);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .panel-actions { display: flex; gap: 8px; }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot.red  { background: #f87171; }
+    .dot.amber{ background: #fbbf24; }
+    .dot.green{ background: #34d399; }
+
+    /* ── Prompt Input ─────────────────────────────────────────────────── */
+    .prompt-wrap {
+      padding: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .prompt-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-2);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    textarea#prompt {
+      width: 100%;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-0);
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      line-height: 1.7;
+      padding: 14px;
+      resize: vertical;
+      min-height: 90px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    textarea#prompt:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* ── Controls ─────────────────────────────────────────────────────── */
+    .controls {
+      padding: 16px 18px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    @media (max-width: 520px) { .controls { grid-template-columns: 1fr 1fr; } }
+
+    .control-group label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-2);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-row input[type=range] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 3px;
+      background: var(--bg-3);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    .control-row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    .control-val {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--accent);
+      min-width: 30px;
+      text-align: right;
+    }
+
+    /* ── Action Buttons ───────────────────────────────────────────────── */
+    .action-bar {
+      padding: 16px 18px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      flex: 1;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #7080ff;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .btn-ghost {
+      background: var(--bg-2);
+      color: var(--text-1);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+      border-color: var(--border-hi);
+      color: var(--text-0);
+    }
+
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn.loading {
+      position: relative;
+      color: transparent;
+    }
+
+    .btn.loading::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 16px;
+      height: 16px;
+      margin: -8px 0 0 -8px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Output ───────────────────────────────────────────────────────── */
+    .output-panel {
+      margin-top: 20px;
+    }
+
+    #output-container {
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      line-height: 1.75;
+      padding: 20px;
+      min-height: 180px;
+      color: var(--text-0);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    #output-container.placeholder { color: var(--text-2); font-style: italic; }
+
+    .output-prompt { color: var(--text-1); }
+    .output-generated { color: var(--green); }
+
+    .cursor-blink {
+      display: inline-block;
+      width: 8px;
+      height: 1em;
+      background: var(--green);
+      margin-left: 1px;
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── Stats Footer ─────────────────────────────────────────────────── */
+    .stats-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-2);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    #stats {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-2);
+    }
+
+    #stats .hi { color: var(--green); font-weight: 500; }
+
+    .download-btn {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 5px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-1);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: none;
+    }
+
+    .download-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Benchmarks ───────────────────────────────────────────────────── */
+    .benchmarks {
+      margin-top: 32px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .bench-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+    }
+
+    .bench-card h3 {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-2);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .bench-val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .bench-unit {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-2);
+      margin-top: 4px;
+    }
+
+    /* ── Toast ────────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      background: var(--bg-3);
+      border: 1px solid var(--border-hi);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-0);
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    #toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* ── Responsive ───────────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .header-badges { display: none; }
+      .hero h1 { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="page">
+
+  <!-- ── Header ──────────────────────────────────────────────────────── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">Mini<span>GPT</span></div>
+    </div>
+    <div class="header-badges">
+      <span class="badge green">~1.5MB INT8</span>
+      <span class="badge">1.4M params</span>
+      <span class="badge">No Server</span>
+      <span class="badge">WASM</span>
+    </div>
+  </header>
+
+  <!-- ── Hero ────────────────────────────────────────────────────────── -->
+  <div class="hero">
+    <h1>
+      A language model<br>
+      <span class="accent">that fits in a tweet.</span>
+    </h1>
+    <p>
+      A 1.4M parameter transformer running entirely in your browser.
+      No server. No API keys. Your text never leaves your device.
+    </p>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-val">~1.5MB</div><div class="stat-lbl">Model Size</div></div>
+      <div class="stat"><div class="stat-val">1.4M</div><div class="stat-lbl">Parameters</div></div>
+      <div class="stat"><div class="stat-val" id="stat-tps">—</div><div class="stat-lbl">Tokens/sec</div></div>
+      <div class="stat"><div class="stat-val">100%</div><div class="stat-lbl">On-device</div></div>
+    </div>
+  </div>
+
+  <!-- ── Load Section ────────────────────────────────────────────────── -->
+  <div id="load-section">
+    <div class="load-header">
+      <span class="load-title">// model loader</span>
+      <span class="load-status" id="load-status">awaiting init...</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <button class="load-btn" id="load-btn" onclick="loadModel()">
+      Load Model (~1.5MB)
+    </button>
+  </div>
+
+  <!-- ── App Section ─────────────────────────────────────────────────── -->
+  <div id="app-section">
+
+    <!-- Prompt + Controls -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">// prompt</span>
+        <div class="panel-actions">
+          <div class="dot red"></div>
+          <div class="dot amber"></div>
+          <div class="dot green"></div>
+        </div>
+      </div>
+
+      <div class="prompt-wrap">
+        <div class="prompt-label">Input Prompt</div>
+        <textarea id="prompt" placeholder="Once upon a time, there was a tiny robot who...">Once upon a time, there was a tiny robot who</textarea>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label>Max Tokens</label>
+          <div class="control-row">
+            <input type="range" id="max-tokens" min="20" max="200" value="80"
+              oninput="document.getElementById('max-tokens-val').textContent=this.value" />
+            <span class="control-val" id="max-tokens-val">80</span>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>Temperature</label>
+          <div class="control-row">
+            <input type="range" id="temperature" min="1" max="15" value="8"
+              oninput="document.getElementById('temp-val').textContent=(this.value/10).toFixed(1)" />
+            <span class="control-val" id="temp-val">0.8</span>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>Top-K</label>
+          <div class="control-row">
+            <input type="range" id="top-k" min="1" max="100" value="40"
+              oninput="document.getElementById('topk-val').textContent=this.value" />
+            <span class="control-val" id="topk-val">40</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn btn-primary" id="gen-btn" onclick="startGenerate()">
+          ▶ Generate
+        </button>
+        <button class="btn btn-ghost" id="stop-btn" onclick="stopGenerate()" disabled>
+          ■ Stop
+        </button>
+        <button class="btn btn-ghost" onclick="clearOutput()">
+          Clear
+        </button>
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div class="panel output-panel">
+      <div class="panel-header">
+        <span class="panel-title">// output</span>
+        <div class="panel-actions">
+          <button class="download-btn" id="download-btn" onclick="downloadStory()">
+            ↓ save .txt
+          </button>
+        </div>
+      </div>
+      <div id="output-container" class="placeholder">
+        Model loaded. Enter a prompt above and press Generate.
+      </div>
+      <div class="stats-bar">
+        <span id="stats">ready</span>
+      </div>
+    </div>
+
+    <!-- Benchmark cards -->
+    <div class="benchmarks">
+      <div class="bench-card">
+        <h3>Last Run Speed</h3>
+        <div class="bench-val" id="bench-tps">—</div>
+        <div class="bench-unit">tokens / second</div>
+      </div>
+      <div class="bench-card">
+        <h3>Tokens Generated</h3>
+        <div class="bench-val" id="bench-tokens">—</div>
+        <div class="bench-unit">in last generation</div>
+      </div>
+      <div class="bench-card">
+        <h3>Generation Time</h3>
+        <div class="bench-val" id="bench-time">—</div>
+        <div class="bench-unit">milliseconds</div>
+      </div>
+      <div class="bench-card">
+        <h3>Model Runtime</h3>
+        <div class="bench-val">WASM</div>
+        <div class="bench-unit">WebAssembly SIMD CPU</div>
+      </div>
+    </div>
+
+  </div><!-- /#app-section -->
+
+</div><!-- /.page -->
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  // ── Config ──────────────────────────────────────────────────────────────
+  const MODEL_URL      = './assets/mini_gpt_quant.onnx';
+  const TOKENIZER_URL  = './assets/mini_gpt_tokenizer';
+
+  // ── State ────────────────────────────────────────────────────────────────
+  let worker       = null;
+  let modelReady   = false;
+  let generating   = false;
+  let promptText   = '';
+  let outputText   = '';
+
+  // ── Worker Setup ─────────────────────────────────────────────────────────
+  function loadModel() {
+    const btn = document.getElementById('load-btn');
+    btn.disabled = true;
+    btn.textContent = 'Loading...';
+    setLoadStatus('starting worker...');
+
+    worker = new Worker('./workers/inference.worker.js');
+    worker.onmessage = handleWorkerMessage;
+    worker.onerror = (e) => {
+      showToast('Worker error: ' + e.message);
+      setLoadStatus('error — ' + e.message);
+    };
+
+    worker.postMessage({ type: 'init', modelUrl: MODEL_URL, tokenizerUrl: TOKENIZER_URL });
+  }
+
+  function handleWorkerMessage(e) {
+    const { type, ...data } = e.data;
+
+    switch (type) {
+      case 'progress':
+        setLoadStatus(`loading ${data.phase}...`);
+        setProgress(data.loaded);
+        break;
+
+      case 'ready':
+        modelReady = true;
+        setProgress(100);
+        setLoadStatus('model ready ✓');
+        document.getElementById('load-section').style.display = 'none';
+        document.getElementById('app-section').style.display = 'block';
+        showToast('Model loaded successfully!');
+        break;
+
+      case 'token':
+        appendToken(data.text);
+        break;
+
+      case 'done':
+        onGenerateDone(data);
+        break;
+
+      case 'error':
+        showToast('Error: ' + data.message);
+        resetGenerateUI();
+        break;
+    }
+  }
+
+  // ── Generate ─────────────────────────────────────────────────────────────
+  function startGenerate() {
+    if (!modelReady || generating) return;
+
+    promptText = document.getElementById('prompt').value.trim();
+    if (!promptText) { showToast('Enter a prompt first'); return; }
+
+    generating = true;
+    outputText = '';
+
+    // UI
+    const genBtn  = document.getElementById('gen-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    genBtn.classList.add('loading');
+    genBtn.disabled = true;
+    stopBtn.disabled = false;
+    document.getElementById('download-btn').style.display = 'none';
+
+    // Render prompt in output
+    const out = document.getElementById('output-container');
+    out.classList.remove('placeholder');
+    out.innerHTML = `<span class="output-prompt">${escapeHtml(promptText)}</span><span class="output-generated" id="gen-text"></span><span class="cursor-blink"></span>`;
+
+    setStats('generating...');
+
+    worker.postMessage({
+      type: 'generate',
+      prompt: promptText,
+      maxTokens: parseInt(document.getElementById('max-tokens').value),
+      temperature: parseFloat(document.getElementById('temperature').value) / 10,
+      topK: parseInt(document.getElementById('top-k').value),
+    });
+  }
+
+  function stopGenerate() {
+    if (worker) worker.postMessage({ type: 'cancel' });
+    resetGenerateUI();
+    setStats('stopped by user');
+  }
+
+  function appendToken(text) {
+    outputText += text;
+    const el = document.getElementById('gen-text');
+    if (el) el.textContent = outputText;
+  }
+
+  function onGenerateDone({ tps, totalTokens, elapsedMs }) {
+    // Remove cursor
+    const cursor = document.querySelector('.cursor-blink');
+    if (cursor) cursor.remove();
+
+    generating = false;
+    resetGenerateUI();
+
+    // Stats
+    document.getElementById('stat-tps').textContent = tps;
+    document.getElementById('bench-tps').textContent = tps;
+    document.getElementById('bench-tokens').textContent = totalTokens;
+    document.getElementById('bench-time').textContent = elapsedMs;
+    setStats(`generated ${totalTokens} tokens · <span class="hi">${tps} tok/s</span> · ${elapsedMs}ms`);
+
+    // Show download button
+    document.getElementById('download-btn').style.display = 'block';
+  }
+
+  function resetGenerateUI() {
+    generating = false;
+    const genBtn  = document.getElementById('gen-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    genBtn.classList.remove('loading');
+    genBtn.disabled = false;
+    stopBtn.disabled = true;
+  }
+
+  function clearOutput() {
+    const out = document.getElementById('output-container');
+    out.classList.add('placeholder');
+    out.innerHTML = 'Model loaded. Enter a prompt above and press Generate.';
+    outputText = '';
+    document.getElementById('download-btn').style.display = 'none';
+    setStats('ready');
+  }
+
+  // ── Download ─────────────────────────────────────────────────────────────
+  function downloadStory() {
+    const content = `Prompt:\n${promptText}\n\nGenerated Story:\n${outputText}`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `minigpt_story_${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('Story downloaded!');
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function setLoadStatus(msg) {
+    document.getElementById('load-status').textContent = msg;
+  }
+
+  function setProgress(pct) {
+    document.getElementById('progress-fill').style.width = pct + '%';
+  }
+
+  function setStats(html) {
+    document.getElementById('stats').innerHTML = html;
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+</script>
+</body>
+</html>
