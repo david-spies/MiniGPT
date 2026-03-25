@@ -11,6 +11,15 @@ Commands:
 import argparse
 import logging
 import sys
+import os
+
+# ── Path bootstrap ────────────────────────────────────────────────────────────
+# Ensure the project root is always the FIRST entry on sys.path.
+# This prevents a venv-installed 'src' package from shadowing the local src/
+# directory, which causes: ImportError: cannot import name 'MiniGPT' from 'src.model'
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,13 +53,11 @@ def cmd_train(args):
     config = DEFAULT_CONFIG
     logger.info(f"Config: {config}")
 
-    # Tokenizer
     tokenizer = prepare_tokenizer(
         tokenizer_dir=args.tokenizer_dir,
         vocab_size=config.vocab_size,
     )
 
-    # Data
     train_loader, val_loader = build_dataloaders(
         tokenizer,
         block_size=config.block_size,
@@ -58,11 +65,9 @@ def cmd_train(args):
         n_train_samples=args.n_samples,
     )
 
-    # Model
     model = MiniGPT(config)
     logger.info(f"Model: {model.count_parameters():,} parameters")
 
-    # Train
     trainer = Trainer(
         model, config, train_loader, val_loader,
         checkpoint_dir=args.checkpoint_dir,
@@ -79,7 +84,6 @@ def cmd_export(args):
     config = DEFAULT_CONFIG
     model = MiniGPT(config)
 
-    # Load checkpoint
     ckpt = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     model.load_state_dict(ckpt["model_state_dict"])
     logger.info(f"Loaded checkpoint: {args.checkpoint}")
@@ -141,33 +145,28 @@ def main():
     parser = argparse.ArgumentParser(description="MiniGPT <16MB Language Model")
     sub = parser.add_subparsers(dest="command")
 
-    # info
     sub.add_parser("info", help="Show model sizes and parameter counts")
 
-    # train
     p_train = sub.add_parser("train", help="Train the model")
     p_train.add_argument("--tokenizer-dir", default="mini_gpt_tokenizer")
     p_train.add_argument("--checkpoint-dir", default="checkpoints")
-    p_train.add_argument("--n-samples", type=int, default=None, help="Limit training samples")
-    p_train.add_argument("--amp", action="store_true", help="Enable mixed precision")
+    p_train.add_argument("--n-samples", type=int, default=None)
+    p_train.add_argument("--amp", action="store_true")
 
-    # export
     p_export = sub.add_parser("export", help="Export to ONNX + quantize")
     p_export.add_argument("--checkpoint", default="checkpoints/mini_gpt_best.pt")
     p_export.add_argument("--output-dir", default="web/assets")
 
-    # generate
     p_gen = sub.add_parser("generate", help="Generate text")
     p_gen.add_argument("--checkpoint", default="checkpoints/mini_gpt_best.pt")
     p_gen.add_argument("--tokenizer-dir", default="mini_gpt_tokenizer")
     p_gen.add_argument("--prompt", default=None)
     p_gen.add_argument("--max-tokens", type=int, default=100)
 
-    # benchmark
     p_bench = sub.add_parser("benchmark", help="Benchmark inference speed")
     p_bench.add_argument("--checkpoint", default="checkpoints/mini_gpt_best.pt")
     p_bench.add_argument("--tokenizer-dir", default="mini_gpt_tokenizer")
-    p_bench.add_argument("--onnx", default=None, help="Path to .onnx file for ONNX benchmark")
+    p_bench.add_argument("--onnx", default=None)
 
     args = parser.parse_args()
 
