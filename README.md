@@ -22,7 +22,7 @@
 ## 🚀 5-Minute Setup
 
 ```bash
-git clone https://github.com/your-username/minigpt.git && cd minigpt
+git clone https://github.com/david-spies/minigpt.git && cd minigpt
 pip install -r requirements.txt
 python main.py info                        # Verify config
 python main.py train --n-samples 50000    # Quick train
