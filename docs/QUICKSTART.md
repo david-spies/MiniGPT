@@ -16,7 +16,7 @@ Get from zero to a running language model in under 5 minutes.
 ## Step 1 — Install Python Dependencies
 
 ```bash
-git clone https://github.com/your-username/minigpt.git
+git clone https://github.com/david-spies/minigpt.git
 cd minigpt
 pip install -r requirements.txt
 ```
