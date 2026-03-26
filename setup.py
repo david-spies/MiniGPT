@@ -1,12 +1,3 @@
-"""
-setup.py — legacy fallback for older pip/setuptools versions.
-
-Prefer: pip install -e .   (uses pyproject.toml)
-Also works: python setup.py develop
-
-This puts the project root on sys.path permanently via a .egg-link,
-preventing 'ImportError: cannot import name MiniGPT from src.model (unknown location)'.
-"""
 from setuptools import setup, find_packages
 
 setup(
@@ -14,8 +5,7 @@ setup(
     version="1.0.0",
     packages=find_packages(
         where=".",
-        include=["src", "src.*"],
-        exclude=["tests*", "scripts*", "docs*", "web*", "mobile*"],
+        include=["minigpt_core", "minigpt_core.*"],
     ),
     package_dir={"": "."},
     python_requires=">=3.10",
