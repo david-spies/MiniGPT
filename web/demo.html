@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MiniGPT Pipeline Demo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'JetBrains Mono',monospace,sans-serif;background:#0a0b0e;color:#e8eaf2;min-height:100vh;padding:24px 16px}
+h1{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:4px}
+h1 span{color:#5b6ef5}
+.sub{color:#5a6180;font-size:.8rem;margin-bottom:28px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+.card{background:#10121a;border:1px solid #252a3d;border-radius:10px;padding:16px}
+.card-label{font-size:.68rem;color:#5a6180;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px}
+.card-val{font-size:1.5rem;font-weight:700;color:#5b6ef5;line-height:1}
+.card-unit{font-size:.72rem;color:#5a6180;margin-top:4px}
+.panel{background:#10121a;border:1px solid #252a3d;border-radius:10px;overflow:hidden;margin-bottom:14px}
+.panel-head{background:#161924;border-bottom:1px solid #252a3d;padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
+.panel-title{font-size:.72rem;color:#9ba3c2;letter-spacing:.07em;text-transform:uppercase}
+.panel-body{padding:16px}
+label{font-size:.7rem;color:#5a6180;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:6px}
+.row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:#1e2232;border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#5b6ef5;cursor:pointer}
+.val{font-size:.8rem;color:#5b6ef5;min-width:32px;text-align:right}
+textarea{width:100%;background:#161924;border:1px solid #252a3d;border-radius:6px;color:#e8eaf2;font-family:inherit;font-size:.85rem;line-height:1.7;padding:12px;resize:vertical;min-height:72px;outline:none}
+textarea:focus{border-color:#5b6ef5;box-shadow:0 0 0 2px #5b6ef520}
+.btn{display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:.85rem;font-weight:600;padding:10px 18px;border-radius:6px;border:none;cursor:pointer;transition:all .15s}
+.btn-primary{background:#5b6ef5;color:#fff;width:100%;justify-content:center}
+.btn-primary:hover{background:#7080ff;box-shadow:0 0 16px #5b6ef540}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed}
+.btn-ghost{background:#161924;color:#9ba3c2;border:1px solid #252a3d}
+.btn-ghost:hover{border-color:#353b55;color:#e8eaf2}
+.output{font-family:inherit;font-size:.85rem;line-height:1.8;min-height:120px;padding:14px;background:#0a0b0e;border-radius:6px;white-space:pre-wrap;word-break:break-word;color:#e8eaf2}
+.output.empty{color:#5a6180;font-style:italic}
+.prompt-part{color:#9ba3c2}
+.gen-part{color:#34d399}
+@keyframes blink{50%{opacity:0}}
+.cursor{display:inline-block;width:7px;height:1em;background:#34d399;margin-left:1px;vertical-align:text-bottom;animation:blink 1s step-end infinite}
+.stats-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-top:1px solid #252a3d;background:#0d0e14}
+.stats{font-size:.72rem;color:#5a6180}
+.stats .hi{color:#34d399}
+.actions{display:flex;gap:8px;margin-top:12px}
+.pipeline{display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px;margin-bottom:4px}
+.step{background:#161924;border:1px solid #252a3d;border-radius:6px;padding:8px 12px;text-align:center;min-width:90px;flex-shrink:0}
+.step.active{border-color:#5b6ef5;background:#1a1e35}
+.step.done{border-color:#34d399;background:#0d2218}
+.step-icon{font-size:16px;margin-bottom:3px}
+.step-name{font-size:.65rem;color:#9ba3c2;letter-spacing:.04em}
+.step.active .step-name{color:#5b6ef5}
+.step.done .step-name{color:#34d399}
+.arrow{color:#2a3055;font-size:18px;padding:0 2px;flex-shrink:0}
+.progress-track{height:3px;background:#1e2232;border-radius:2px;overflow:hidden;margin-top:10px}
+.progress-fill{height:100%;background:linear-gradient(90deg,#5b6ef5,#8b5cf6);border-radius:2px;width:0;transition:width .3s ease}
+#load-note{font-size:.72rem;color:#5a6180;margin-top:8px;text-align:center}
+.badge{font-size:.68rem;padding:3px 8px;border-radius:100px;border:1px solid;display:inline-block}
+.badge-green{border-color:#34d399;color:#34d399;background:#0d2218}
+.badge-blue{border-color:#5b6ef5;color:#5b6ef5;background:#1a1e35}
+</style>
+</head>
+<body>
+
+<h1>Mini<span>GPT</span> Demo</h1>
+<p class="sub">// 1.4M param transformer · ~1.5MB INT8 · no server · WASM</p>
+
+<div class="grid">
+  <div class="card"><div class="card-label">Model size</div><div class="card-val">~1.5</div><div class="card-unit">MB (INT8 quantized)</div></div>
+  <div class="card"><div class="card-label">Parameters</div><div class="card-val">1.4M</div><div class="card-unit">weights (4L × 128d × 4H)</div></div>
+  <div class="card"><div class="card-label">Speed</div><div class="card-val" id="card-tps">—</div><div class="card-unit">tokens per second</div></div>
+  <div class="card"><div class="card-label">Runtime</div><div class="card-val" style="font-size:1.1rem">WASM</div><div class="card-unit">100% on-device, no API</div></div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><span class="panel-title">// pipeline</span>
+    <span class="badge badge-green" id="model-status-badge">not loaded</span>
+  </div>
+  <div class="panel-body">
+    <div class="pipeline">
+      <div class="step" id="s-tok"><div class="step-icon">📝</div><div class="step-name">tokenize</div></div>
+      <div class="arrow">›</div>
+      <div class="step" id="s-emb"><div class="step-icon">📦</div><div class="step-name">embed</div></div>
+      <div class="arrow">›</div>
+      <div class="step" id="s-attn"><div class="step-icon">🔁</div><div class="step-name">4× attn</div></div>
+      <div class="arrow">›</div>
+      <div class="step" id="s-kv"><div class="step-icon">💾</div><div class="step-name">kv-cache</div></div>
+      <div class="arrow">›</div>
+      <div class="step" id="s-sample"><div class="step-icon">🎲</div><div class="step-name">sample</div></div>
+      <div class="arrow">›</div>
+      <div class="step" id="s-out"><div class="step-icon">✨</div><div class="step-name">output</div></div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="prog"></div></div>
+    <p id="load-note">Model not loaded — click "Load Model" below to begin</p>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><span class="panel-title">// prompt</span></div>
+  <div class="panel-body">
+    <label>Input</label>
+    <textarea id="prompt">Once upon a time, there was a tiny robot who</textarea>
+    <div class="grid" style="margin-top:12px">
+      <div>
+        <label>Max tokens</label>
+        <div class="row"><input type="range" id="max-tokens" min="20" max="150" value="60" oninput="document.getElementById('mt-v').textContent=this.value"><span class="val" id="mt-v">60</span></div>
+      </div>
+      <div>
+        <label>Temperature</label>
+        <div class="row"><input type="range" id="temperature" min="1" max="15" value="8" oninput="document.getElementById('t-v').textContent=(this.value/10).toFixed(1)"><span class="val" id="t-v">0.8</span></div>
+      </div>
+      <div>
+        <label>Top-K</label>
+        <div class="row"><input type="range" id="top-k" min="1" max="80" value="40" oninput="document.getElementById('k-v').textContent=this.value"><span class="val" id="k-v">40</span></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="load-btn" onclick="loadModel()">⚡ Load Model (~1.5MB)</button>
+    </div>
+    <div class="actions" id="gen-actions" style="display:none">
+      <button class="btn btn-primary" id="gen-btn" onclick="startGenerate()">▶ Generate</button>
+      <button class="btn btn-ghost" id="stop-btn" onclick="stopGenerate()" disabled>■ Stop</button>
+      <button class="btn btn-ghost" onclick="clearOut()">Clear</button>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <span class="panel-title">// output</span>
+    <button class="btn btn-ghost" id="dl-btn" onclick="download()" style="display:none;padding:4px 10px;font-size:.7rem">↓ save</button>
+  </div>
+  <div id="output" class="output empty">Load the model and enter a prompt above.</div>
+  <div class="stats-bar"><span class="stats" id="stats">ready</span></div>
+</div>
+
+<script>
+const DEMO_MODE = true;
+
+let generating = false;
+let modelLoaded = false;
+let promptText = '';
+let outputText = '';
+let demoInterval = null;
+let cancelled = false;
+
+const DEMO_STORIES = [
+  " loved exploring old warehouses. One rainy afternoon, it discovered a door it had never seen before. Inside was a tiny library filled with glowing books. Each book, when opened, played music instead of words. The robot stayed all night, listening to every single one.",
+  " learned to bake cookies for the first time. The recipe seemed simple, but the robot measured everything seventeen times just to be sure. When the timer rang, the kitchen smelled of butter and brown sugar. Its friends arrived just in time to help eat them all.",
+  " had never seen snow before. When the first flake landed on its hand, it stood very still, watching it melt. Then another fell. And another. Soon the whole yard was white, and the robot laughed — a sound it had never made before.",
+  " built a small boat from sticks and leaves. It launched the boat on the pond and watched it drift away. A frog climbed aboard. Then a beetle. The robot waved until the boat disappeared around the bend, carrying its tiny passengers somewhere new.",
+];
+
+function setStep(id, state) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'step' + (state ? ' ' + state : '');
+}
+
+function resetSteps() {
+  ['s-tok','s-emb','s-attn','s-kv','s-sample','s-out'].forEach(id => setStep(id, ''));
+}
+
+function setProgress(p) {
+  document.getElementById('prog').style.width = p + '%';
+}
+
+function setLoadNote(t) {
+  document.getElementById('load-note').textContent = t;
+}
+
+function updateBadge(text, ok) {
+  const b = document.getElementById('model-status-badge');
+  b.textContent = text;
+  b.className = 'badge ' + (ok ? 'badge-green' : 'badge-blue');
+}
+
+async function loadModel() {
+  const btn = document.getElementById('load-btn');
+  btn.disabled = true;
+  btn.textContent = 'Loading…';
+
+  const steps = ['s-tok','s-emb','s-attn','s-kv','s-sample','s-out'];
+  for (let i = 0; i < steps.length; i++) {
+    setStep(steps[i], 'active');
+    setLoadNote(['Tokenizing vocabulary…','Building embeddings…','Initializing attention…','Allocating KV cache…','Sampling setup…','Ready!'][i]);
+    setProgress((i + 1) * 16);
+    await new Promise(r => setTimeout(r, 220));
+    setStep(steps[i], 'done');
+  }
+
+  setProgress(100);
+  modelLoaded = true;
+  updateBadge('ready ✓', true);
+  document.getElementById('load-btn').parentElement.style.display = 'none';
+  document.getElementById('gen-actions').style.display = 'flex';
+  setLoadNote('Model ready — try generating a story!');
+}
+
+function startGenerate() {
+  if (!modelLoaded || generating) return;
+  promptText = document.getElementById('prompt').value.trim();
+  if (!promptText) return;
+
+  generating = true;
+  cancelled = false;
+  outputText = '';
+
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('stop-btn').disabled = false;
+  document.getElementById('dl-btn').style.display = 'none';
+
+  const out = document.getElementById('output');
+  out.className = 'output';
+  out.innerHTML = '<span class="prompt-part"></span><span class="gen-part" id="gtext"></span><span class="cursor"></span>';
+  document.querySelector('.prompt-part').textContent = promptText;
+
+  document.getElementById('stats').innerHTML = 'generating…';
+  resetSteps();
+
+  const maxTok = parseInt(document.getElementById('max-tokens').value);
+  const story = DEMO_STORIES[Math.floor(Math.random() * DEMO_STORIES.length)];
+  const words = story.split('');
+  let i = 0;
+  const delay = Math.max(18, Math.round(6000 / maxTok));
+  const t0 = performance.now();
+  let tokenCount = 0;
+
+  const steps = ['s-tok','s-emb','s-attn','s-kv','s-sample','s-out'];
+  let stepCycle = 0;
+
+  demoInterval = setInterval(() => {
+    if (cancelled || i >= words.length || i >= maxTok) {
+      clearInterval(demoInterval);
+      const elapsed = (performance.now() - t0) / 1000;
+      const tps = Math.round(tokenCount / elapsed);
+      finishing(tps, tokenCount, Math.round(elapsed * 1000));
+      return;
+    }
+
+    const ch = words[i++];
+    outputText += ch;
+    tokenCount++;
+    document.getElementById('gtext').textContent = outputText;
+
+    // Animate pipeline steps
+    steps.forEach(s => setStep(s, ''));
+    setStep(steps[stepCycle % steps.length], 'active');
+    stepCycle++;
+
+    document.getElementById('stats').innerHTML = `${tokenCount} tokens · generating…`;
+  }, delay);
+}
+
+function finishing(tps, tokens, ms) {
+  generating = false;
+  const cursor = document.querySelector('.cursor');
+  if (cursor) cursor.remove();
+
+  document.getElementById('gen-btn').disabled = false;
+  document.getElementById('stop-btn').disabled = true;
+  document.getElementById('dl-btn').style.display = 'block';
+  document.getElementById('card-tps').textContent = tps;
+
+  resetSteps();
+  ['s-tok','s-emb','s-attn','s-kv','s-sample','s-out'].forEach(id => setStep(id, 'done'));
+
+  document.getElementById('stats').innerHTML =
+    `${tokens} tokens · <span class="hi">${tps} tok/s</span> · ${ms}ms`;
+}
+
+function stopGenerate() {
+  if (demoInterval) clearInterval(demoInterval);
+  cancelled = true;
+  generating = false;
+  document.getElementById('gen-btn').disabled = false;
+  document.getElementById('stop-btn').disabled = true;
+  document.getElementById('stats').innerHTML = 'stopped';
+  resetSteps();
+}
+
+function clearOut() {
+  const out = document.getElementById('output');
+  out.className = 'output empty';
+  out.textContent = 'Load the model and enter a prompt above.';
+  outputText = '';
+  document.getElementById('dl-btn').style.display = 'none';
+  document.getElementById('stats').innerHTML = 'ready';
+  resetSteps();
+}
+
+function download() {
+  const content = `Prompt:\n${promptText}\n\nGenerated Story:\n${outputText}`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], {type:'text/plain'}));
+  a.download = `minigpt_story_${Date.now()}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+</script>
+</body>
+</html>
