@@ -1,0 +1,107 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pip-log.txt
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# ── Type Checking ─────────────────────────────────────────────────────────────
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ── ML Artifacts (LARGE — never commit these) ─────────────────────────────────
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# ONNX models — only commit the quantized one if under 5MB
+web/assets/mini_gpt_fp32.onnx
+# web/assets/mini_gpt_quant.onnx   # <-- Intentionally NOT ignored (deploy artifact)
+
+# TFLite / CoreML build artifacts
+*.tflite
+*.mlpackage/
+*.mlmodel
+
+# ── Tokenizer Training Output ─────────────────────────────────────────────────
+# Commit the trained tokenizer (small JSON files needed for browser)
+# mini_gpt_tokenizer/  <-- NOT ignored
+
+# ── HuggingFace Cache ─────────────────────────────────────────────────────────
+.cache/
+~/.cache/huggingface/
+
+# ── Node.js ───────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+package-lock.json
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# ── Xcode ─────────────────────────────────────────────────────────────────────
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# ── Android ───────────────────────────────────────────────────────────────────
+*.apk
+*.aab
+*.ap_
+*.dex
+local.properties
+.gradle/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/captures/
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints
+*.ipynb
+
+# ── Temporary Files ───────────────────────────────────────────────────────────
+/tmp/
+temp/
+*.tmp
+*.bak
+*.log
