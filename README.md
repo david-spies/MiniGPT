@@ -209,7 +209,7 @@ Full detail for every error with terminal commands: **[docs/QUICKSTART.md](docs/
 
 ## 📜 License
 
-MIT
+MIT - Use it, fork it, build with it.
 
 ## 🔗 References
 
