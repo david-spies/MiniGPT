@@ -13,14 +13,35 @@ import logging
 import sys
 import os
 
-# ── Path bootstrap ────────────────────────────────────────────────────────────
-# Ensure the project root is always the FIRST entry on sys.path.
-# This prevents a venv-installed 'src' package from shadowing the local src/
-# directory, which causes: ImportError: cannot import name 'MiniGPT' from 'src.model'
-_ROOT = os.path.dirname(os.path.abspath(__file__))
-if _ROOT not in sys.path:
-    sys.path.insert(0, _ROOT)
+# ── Path bootstrap ─────────────────────────────────────────────────────────────
+# MUST run before any project imports.
+#
+# Problem: pip editable installs register a .pth file that adds the install-time
+# directory to sys.path. If the project was ever installed from a different path,
+# or if a prior 'src' package install exists, Python resolves minigpt_core to
+# "(unknown location)" — an empty namespace package — instead of the local files.
+#
+# Fix: forcibly evict any previously-imported minigpt_core from sys.modules and
+# put the real project root at index 0 so it always wins.
 
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# Remove any stale minigpt_core entries from the module cache
+for _key in list(sys.modules.keys()):
+    if _key == "minigpt_core" or _key.startswith("minigpt_core."):
+        del sys.modules[_key]
+
+# Put project root first, removing any duplicate entries
+sys.path = [_ROOT] + [p for p in sys.path if os.path.realpath(p) != os.path.realpath(_ROOT)]
+
+# Sanity-check: the package must be importable as a real directory, not a namespace
+_pkg_path = os.path.join(_ROOT, "minigpt_core", "__init__.py")
+if not os.path.isfile(_pkg_path):
+    print(f"ERROR: minigpt_core/__init__.py not found at {_pkg_path}")
+    print(f"       Make sure you are running main.py from the project root: {_ROOT}")
+    sys.exit(1)
+
+# ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
@@ -29,8 +50,10 @@ logging.basicConfig(
 logger = logging.getLogger("minigpt")
 
 
+# ── Commands ───────────────────────────────────────────────────────────────────
+
 def cmd_info(args):
-    from src.model import MiniGPT, DEFAULT_CONFIG, MEDIUM_CONFIG
+    from minigpt_core.model import MiniGPT, DEFAULT_CONFIG, MEDIUM_CONFIG
     for name, cfg in [("DEFAULT (1.4M params)", DEFAULT_CONFIG), ("MEDIUM (still <16MB)", MEDIUM_CONFIG)]:
         model = MiniGPT(cfg)
         params = model.count_parameters()
@@ -46,9 +69,9 @@ def cmd_info(args):
 
 def cmd_train(args):
     import torch
-    from src.model import MiniGPT, DEFAULT_CONFIG
-    from src.tokenizer import prepare_tokenizer, build_dataloaders
-    from src.training import Trainer
+    from minigpt_core.model import MiniGPT, DEFAULT_CONFIG
+    from minigpt_core.tokenizer import prepare_tokenizer, build_dataloaders
+    from minigpt_core.training import Trainer
 
     config = DEFAULT_CONFIG
     logger.info(f"Config: {config}")
@@ -57,14 +80,12 @@ def cmd_train(args):
         tokenizer_dir=args.tokenizer_dir,
         vocab_size=config.vocab_size,
     )
-
     train_loader, val_loader = build_dataloaders(
         tokenizer,
         block_size=config.block_size,
         batch_size=config.batch_size,
         n_train_samples=args.n_samples,
     )
-
     model = MiniGPT(config)
     logger.info(f"Model: {model.count_parameters():,} parameters")
 
@@ -78,31 +99,27 @@ def cmd_train(args):
 
 def cmd_export(args):
     import torch
-    from src.model import MiniGPT, DEFAULT_CONFIG
-    from src.export import export_pipeline
+    from minigpt_core.model import MiniGPT, DEFAULT_CONFIG
+    from minigpt_core.export import export_pipeline
 
     config = DEFAULT_CONFIG
     model = MiniGPT(config)
-
     ckpt = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     model.load_state_dict(ckpt["model_state_dict"])
     logger.info(f"Loaded checkpoint: {args.checkpoint}")
-
     export_pipeline(model, config, output_dir=args.output_dir)
 
 
 def cmd_generate(args):
     import torch
-    from src.model import MiniGPT, DEFAULT_CONFIG
-    from src.tokenizer import load_tokenizer
-    from src.inference import generate
+    from minigpt_core.model import MiniGPT, DEFAULT_CONFIG
+    from minigpt_core.tokenizer import load_tokenizer
+    from minigpt_core.inference import generate
 
     config = DEFAULT_CONFIG
     model = MiniGPT(config)
-
     ckpt = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     model.load_state_dict(ckpt["model_state_dict"])
-
     tokenizer = load_tokenizer(args.tokenizer_dir)
 
     prompt = args.prompt or input("Enter prompt: ")
@@ -114,9 +131,9 @@ def cmd_generate(args):
 
 def cmd_benchmark(args):
     import torch
-    from src.model import MiniGPT, DEFAULT_CONFIG
-    from src.tokenizer import load_tokenizer
-    from src.inference import benchmark_pytorch, OnnxInferenceSession, benchmark_onnx
+    from minigpt_core.model import MiniGPT, DEFAULT_CONFIG
+    from minigpt_core.tokenizer import load_tokenizer
+    from minigpt_core.inference import benchmark_pytorch, OnnxInferenceSession, benchmark_onnx
 
     config = DEFAULT_CONFIG
     tokenizer = load_tokenizer(args.tokenizer_dir)
@@ -140,6 +157,8 @@ def cmd_benchmark(args):
     print(f"  Speed  : {result['tps']:.1f} tokens/sec")
     print(f"  Latency: {result['avg_s']*1000:.0f}ms for 50 tokens")
 
+
+# ── Argument Parser ────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="MiniGPT <16MB Language Model")
