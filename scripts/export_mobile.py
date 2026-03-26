@@ -31,7 +31,7 @@ def export_coreml(model, config, output_path: str = "mobile/ios/mini_gpt.mlpacka
         raise ImportError("pip install coremltools onnx")
 
     # First export to ONNX
-    from src.export import export_onnx
+    from minigpt_core.export import export_onnx
     onnx_path = "/tmp/mini_gpt_export.onnx"
     export_onnx(model, config, onnx_path)
 
@@ -79,7 +79,7 @@ def export_tflite(model, config, output_path: str = "mobile/android/app/src/main
     except ImportError:
         raise ImportError("pip install onnx onnx-tf tensorflow")
 
-    from src.export import export_onnx
+    from minigpt_core.export import export_onnx
 
     onnx_path = "/tmp/mini_gpt_export.onnx"
     tf_path = "/tmp/mini_gpt_tf"
@@ -121,7 +121,7 @@ def main():
     args = parser.parse_args()
 
     import torch
-    from src.model import MiniGPT, DEFAULT_CONFIG
+    from minigpt_core.model import MiniGPT, DEFAULT_CONFIG
 
     config = DEFAULT_CONFIG
     model = MiniGPT(config)
