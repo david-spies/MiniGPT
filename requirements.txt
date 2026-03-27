@@ -20,6 +20,7 @@ transformers>=4.39.0            # PreTrainedTokenizerFast wrapper
 onnx>=1.16.0                    # ONNX graph format
 onnxruntime>=1.17.0             # ONNX Runtime (CPU inference + quantization)
 onnxruntime-tools>=1.7.0        # Additional quantization utilities
+onnxscript>=0.1.0               # Required by torch.onnx.export in PyTorch 2.x
 
 # ── Mobile Export (optional) ──────────────────────────────────────────────────
 # Uncomment for iOS CoreML export:
