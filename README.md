@@ -1,3 +1,5 @@
+<img width="1270" height="640" alt="MiniGPT" src="https://github.com/user-attachments/assets/25529c24-ba62-490f-bc93-26e7187a4136" />
+
 # ⚡ MiniGPT — Sub-16MB On-Device Language Model
 
 > A 1.4M parameter GPT-style transformer that runs **entirely in the browser** via WebAssembly, or **natively on iOS/Android** — no server, no API keys, no data leaves your device.
