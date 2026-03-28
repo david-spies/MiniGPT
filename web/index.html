@@ -739,8 +739,8 @@
 
 <script>
   // ── Config ──────────────────────────────────────────────────────────────
-  const MODEL_URL      = './assets/mini_gpt_quant.onnx';
-  const TOKENIZER_URL  = './assets/mini_gpt_tokenizer';
+  const MODEL_URL      = location.origin + '/assets/mini_gpt_quant.onnx';
+  const TOKENIZER_URL  = location.origin + '/assets/mini_gpt_tokenizer';
 
   // ── State ────────────────────────────────────────────────────────────────
   let worker       = null;
