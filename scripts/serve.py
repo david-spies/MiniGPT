@@ -2,14 +2,12 @@
 """
 scripts/serve.py — Local development server for MiniGPT browser app.
 
-Fixes the #1 deployment gotcha: browsers (and Python's built-in http.server)
-don't always serve .onnx files with the correct MIME type, which can cause
-ONNX Runtime Web to reject the model file.
-
-This server explicitly sets:
-  .onnx → application/octet-stream
-  .wasm → application/wasm
-  .js   → application/javascript
+Fixes:
+  - .onnx files served as application/octet-stream
+  - .wasm files served as application/wasm
+  - Cross-Origin headers for SharedArrayBuffer support
+  - Silent favicon.ico 404 (no traceback spam)
+  - Robust log_message that handles HTTPStatus enum args
 
 Usage:
   python scripts/serve.py              # serves web/ on port 8080
@@ -25,84 +23,79 @@ import webbrowser
 from pathlib import Path
 
 
-# ── Custom MIME Handler ────────────────────────────────────────────────────────
-
 class MiniGPTHandler(http.server.SimpleHTTPRequestHandler):
-    """Extends SimpleHTTPRequestHandler with correct MIME types for ML files."""
+    """HTTP handler with correct MIME types and clean logging."""
 
-    # Override / extend default MIME map
     extensions_map = {
         **http.server.SimpleHTTPRequestHandler.extensions_map,
-        ".onnx":    "application/octet-stream",
-        ".wasm":    "application/wasm",
-        ".js":      "application/javascript",
-        ".mjs":     "application/javascript",
-        ".json":    "application/json",
-        ".txt":     "text/plain",
-        ".md":      "text/markdown",
-        ".html":    "text/html; charset=utf-8",
-        ".css":     "text/css",
-        ".map":     "application/json",
-        "":         "application/octet-stream",
+        ".onnx": "application/octet-stream",
+        ".wasm": "application/wasm",
+        ".js":   "application/javascript",
+        ".mjs":  "application/javascript",
+        ".json": "application/json",
+        ".txt":  "text/plain",
+        ".md":   "text/markdown",
+        ".html": "text/html; charset=utf-8",
+        ".css":  "text/css",
+        "":      "application/octet-stream",
     }
 
     def end_headers(self):
-        # Required for SharedArrayBuffer (used by some WASM threading setups)
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
         self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
-        # Cache control — no-cache for development
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
         super().end_headers()
 
+    def do_GET(self):
+        # Silently swallow favicon requests — browsers always ask for it
+        if self.path == "/favicon.ico":
+            self.send_response(204)  # No Content
+            self.end_headers()
+            return
+        super().do_GET()
+
     def log_message(self, fmt, *args):
-        # Cleaner log output
-        path = args[0] if args else ""
-        status = args[1] if len(args) > 1 else ""
-        if ".onnx" in path:
-            print(f"  \033[32m[MODEL]\033[0m  {path} → {status}")
-        elif ".wasm" in path:
-            print(f"  \033[34m[WASM]\033[0m   {path} → {status}")
-        elif ".js" in path:
-            print(f"  \033[33m[JS]\033[0m     {path} → {status}")
+        # args[0] is the request line (str) when called from log_request,
+        # but may be an HTTPStatus or other type when called from send_error.
+        # Always convert to string first to avoid TypeError.
+        first = str(args[0]) if args else ""
+        status = str(args[1]) if len(args) > 1 else ""
+
+        if ".onnx" in first:
+            print(f"  \033[32m[MODEL]\033[0m  {first} → {status}")
+        elif ".wasm" in first:
+            print(f"  \033[34m[WASM]\033[0m   {first} → {status}")
+        elif ".js" in first:
+            print(f"  \033[33m[JS]\033[0m     {first} → {status}")
+        elif "favicon" in first or "404" in status:
+            pass  # suppress noisy 404s for missing browser assets
         else:
-            print(f"  \033[90m[HTTP]\033[0m   {path} → {status}")
+            print(f"  \033[90m[HTTP]\033[0m   {first} → {status}")
 
+    def log_error(self, fmt, *args):
+        # Suppress the default stderr error logging entirely —
+        # our log_message above already handles what we want to show.
+        pass
 
-# ── Server Setup ───────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(
-        description="MiniGPT local dev server with correct ONNX/WASM MIME types"
+        description="MiniGPT local dev server"
     )
-    parser.add_argument(
-        "--port", "-p", type=int, default=8080,
-        help="Port to serve on (default: 8080)"
-    )
-    parser.add_argument(
-        "--dir", "-d", default="web",
-        help="Directory to serve (default: web/)"
-    )
-    parser.add_argument(
-        "--no-open", action="store_true",
-        help="Don't auto-open browser"
-    )
+    parser.add_argument("--port", "-p", type=int, default=8080)
+    parser.add_argument("--dir",  "-d", default="web")
+    parser.add_argument("--no-open", action="store_true")
     args = parser.parse_args()
 
     serve_dir = Path(args.dir).resolve()
     if not serve_dir.exists():
         print(f"Error: directory '{args.dir}' does not exist.")
-        print(f"Run 'python main.py export' first to generate web/assets/mini_gpt_quant.onnx")
+        print("Run 'python main.py export' first.")
         sys.exit(1)
 
     os.chdir(serve_dir)
 
-    # Check for model file
     model_path = serve_dir / "assets" / "mini_gpt_quant.onnx"
-    if not model_path.exists():
-        print(f"\n⚠️  Model not found at {model_path}")
-        print("   Run: python main.py export")
-        print("   before starting the server.\n")
-
     url = f"http://localhost:{args.port}"
 
     with socketserver.TCPServer(("", args.port), MiniGPTHandler) as httpd:
@@ -113,7 +106,7 @@ def main():
         print(f"{'─' * 50}")
         print(f"  Serving : {serve_dir}")
         print(f"  URL     : \033[4m{url}\033[0m")
-        print(f"  ONNX    : {'✓ found' if model_path.exists() else '✗ missing (run export first)'}")
+        print(f"  ONNX    : {'✓ found' if model_path.exists() else '✗ missing — run: python main.py export'}")
         print(f"{'─' * 50}")
         print(f"  Press Ctrl+C to stop\n")
 
