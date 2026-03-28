@@ -1,4 +1,4 @@
-<img width="1270" height="640" alt="MiniGPT" src="https://github.com/user-attachments/assets/25529c24-ba62-490f-bc93-26e7187a4136" />
+<img width="1080" height="565" alt="MiniGPT" src="https://github.com/user-attachments/assets/49121a16-3eef-4b3e-8b47-c8df3d0de5fd" />
 
 # ⚡ MiniGPT — Sub-16MB On-Device Language Model
 
